@@ -1,0 +1,168 @@
+{
+  "client": "Thunder Client",
+  "collectionName": "Sercotec Centro de Negocios CMS API",
+  "dateExported": "2026-05-27T02:54:00.000Z",
+  "version": "1.1",
+  "folders": [
+    {
+      "_id": "f-general",
+      "name": "General",
+      "containerId": ""
+    },
+    {
+      "_id": "f-nosotros",
+      "name": "Sección Nosotros",
+      "containerId": ""
+    },
+    {
+      "_id": "f-servicios",
+      "name": "Sección Servicios",
+      "containerId": ""
+    },
+    {
+      "_id": "f-faq",
+      "name": "Sección Preguntas Frecuentes (FAQ)",
+      "containerId": ""
+    },
+    {
+      "_id": "f-noticias",
+      "name": "Sección Noticias",
+      "containerId": ""
+    },
+    {
+      "_id": "f-videos",
+      "name": "Sección Videos",
+      "containerId": ""
+    }
+  ],
+  "requests": [
+    {
+      "_id": "r-get-all",
+      "colId": "col-sercotec",
+      "containerId": "f-general",
+      "name": "Obtener todo el contenido (GET)",
+      "url": "{{baseUrl}}/api/content",
+      "method": "GET",
+      "sortNum": 10000,
+      "headers": [],
+      "params": []
+    },
+    {
+      "_id": "r-post-all",
+      "colId": "col-sercotec",
+      "containerId": "f-general",
+      "name": "Actualizar Base de Datos Completa (POST)",
+      "url": "{{baseUrl}}/api/content",
+      "method": "POST",
+      "headers": [],
+      "params": [],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"nosotros\": {\n    \"titulo\": \"Quiénes Somos\",\n    \"descripcion\": \"El Centro de Desarrollo de Negocios Sercotec Santiago es un espacio de apoyo estratégico...\",\n    \"pilares\": [],\n    \"contactoReal\": {}\n  },\n  \"servicios\": [],\n  \"faq\": [],\n  \"testimonios\": [],\n  \"noticias\": []\n}"
+      }
+    },
+    {
+      "_id": "r-post-nosotros",
+      "colId": "col-sercotec",
+      "containerId": "f-nosotros",
+      "name": "Actualizar Sección Nosotros",
+      "url": "{{baseUrl}}/api/content",
+      "method": "POST",
+      "headers": [],
+      "params": [],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"nosotros\": {\n    \"titulo\": \"Quiénes Somos Oficial\",\n    \"descripcion\": \"El Centro de Desarrollo de Negocios Sercotec Santiago es un espacio estratégico donde micro, pequeñas empresas y cooperativas reciben asesoría técnica y mentorías de alto nivel sin costo.\",\n    \"pilares\": [\n      {\n        \"id\": \"pilar-1\",\n        \"titulo\": \"Impacto y Resultados\",\n        \"descripcion\": \"Más de $22.450 millones en aumento de ventas y 1.834 nuevos empleos generados en 10 años.\",\n        \"icon\": \"user-check\"\n      },\n      {\n        \"id\": \"pilar-2\",\n        \"titulo\": \"Triple Alianza Territorial\",\n        \"descripcion\": \"Articulamos con la Municipalidad de Santiago y Providencia para potenciar tu negocio.\",\n        \"icon\": \"network\"\n      },\n      {\n        \"id\": \"pilar-3\",\n        \"titulo\": \"Presencia y Sedes\",\n        \"descripcion\": \"Centros en Manuel Rodríguez Sur y Los Jesuitas, con puntos móviles quincenales.\",\n        \"icon\": \"book-open\"\n      }\n    ],\n    \"contactoReal\": {\n      \"centro_santiago\": {\n        \"nombre\": \"Centro Principal Santiago (Metro Toesca)\",\n        \"direccion\": \"Manuel Rodríguez Sur 749, Santiago\",\n        \"telefono\": \"+(56) 9 3927 5633\",\n        \"correo\": \"centro.santiago@centrossercotec.cl\",\n        \"atencion\": \"Lunes a Viernes de 9:00 - 18:00 hrs.\",\n        \"jefe\": \"Christian Gacitúa L.\",\n        \"asistente\": \"María Victoria Cuevas H.\"\n      },\n      \"centro_providencia\": {\n        \"nombre\": \"Centro Satélite Providencia\",\n        \"direccion\": \"Los Jesuitas 881, Providencia\",\n        \"telefono\": \"+(56) 9 3927 5633\",\n        \"correo\": \"centro.santiago@centrossercotec.cl\",\n        \"atencion\": \"Martes y Jueves de 09:00 - 13:00 hrs.\",\n        \"responsable\": \"Francisco Ramírez\"\n      }\n    }\n  }\n}"
+      }
+    },
+    {
+      "_id": "r-post-servicios",
+      "colId": "col-sercotec",
+      "containerId": "f-servicios",
+      "name": "Actualizar Todos los Servicios",
+      "url": "{{baseUrl}}/api/content",
+      "method": "POST",
+      "headers": [],
+      "params": [],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"servicios\": [\n    {\n      \"id\": \"asesoria-individual\",\n      \"nombre\": \"Asesoría Técnica Individualizada\",\n      \"descripcion\": \"Mentorías de negocios personalizadas con un consultor experto para planes financieros, comerciales y digitales.\",\n      \"detalle\": \"Sesiones uno a uno enfocadas en aumentar ventas, optimizar procesos y formalización de pymes.\",\n      \"icono\": \"briefcase\"\n    },\n    {\n      \"id\": \"capacitacion-talleres\",\n      \"nombre\": \"Capacitaciones y Escuela de Negocios\",\n      \"descripcion\": \"Cursos, seminarios y talleres sin costo en áreas críticas: tributación, marketing digital, flujo de caja y ventas.\",\n      \"detalle\": \"Calendario mensual actualizado con relatores certificados y vinculación académica.\",\n      \"icono\": \"graduation-cap\"\n    },\n    {\n      \"id\": \"financiamiento-redes\",\n      \"nombre\": \"Postulación a Capitales y Redes\",\n      \"descripcion\": \"Mentoría técnica y formulación para postular a fondos públicos de Sercotec (Semilla, Abeja, Crece) y Corfo.\",\n      \"detalle\": \"Apoyo experto en pitch, formulación de planes de trabajo y presupuestos competitivos.\",\n      \"icono\": \"trending-up\"\n    },\n    {\n      \"id\": \"vinculacion-cooperativas\",\n      \"nombre\": \"Fortalecimiento de Cooperativas y Gremios\",\n      \"descripcion\": \"Acompañamiento asociativo y desarrollo comercial para organizaciones gremiales y ferias libres.\",\n      \"detalle\": \"Asesoría legal, gobernanza democrática y fomento del modelo cooperativo en el territorio.\",\n      \"icono\": \"users\"\n    }\n  ]\n}"
+      }
+    },
+    {
+      "_id": "r-post-faq-item",
+      "colId": "col-sercotec",
+      "containerId": "f-faq",
+      "name": "Agregar una Nueva FAQ (POST)",
+      "url": "{{baseUrl}}/api/content/faq",
+      "method": "POST",
+      "headers": [],
+      "params": [],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"pregunta\": \"¿Cómo me inscribo si soy extranjero con residencia temporaria?\",\n  \"respuesta\": \"Sí, puedes recibir asesoría. Solo necesitas tu cédula de identidad chilena vigente o pasaporte y tu idea de negocio o iniciación de actividades.\"\n}"
+      }
+    },
+    {
+      "_id": "r-post-faq-all",
+      "colId": "col-sercotec",
+      "containerId": "f-faq",
+      "name": "Actualizar Todo el Listado de FAQ",
+      "url": "{{baseUrl}}/api/content",
+      "method": "POST",
+      "headers": [],
+      "params": [],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"faq\": [\n    {\n      \"id\": \"faq-1\",\n      \"pregunta\": \"¿Qué comunas atiende el Centro de Negocios Santiago?\",\n      \"respuesta\": \"Atendemos a cooperativas, pymes y emprendimientos con dirección comercial o residencia en Santiago y Providencia.\"\n    },\n    {\n      \"id\": \"faq-2\",\n      \"pregunta\": \"¿Las mentorías y capacitaciones tienen costo?\",\n      \"respuesta\": \"No. Todo es 100% gratuito. Sercotec es un servicio público de fomento productivo patrocinado por el Ministerio de Economía.\"\n    },\n    {\n      \"id\": \"faq-3\",\n      \"pregunta\": \"¿Dónde atienden presencialmente?\",\n      \"respuesta\": \"Nuestra oficina principal está en Manuel Rodríguez Sur 749 (Metro Toesca) y oficina satélite en Los Jesuitas 881, Providencia.\"\n    }\n  ]\n}"
+      }
+    },
+    {
+      "_id": "r-post-noticias",
+      "colId": "col-sercotec",
+      "containerId": "f-noticias",
+      "name": "Agregar una Nueva Noticia (POST)",
+      "url": "{{baseUrl}}/api/content/news",
+      "method": "POST",
+      "headers": [],
+      "params": [],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"titulo\": \"Exitosa Jornada de Vinculación y Ferias Libres en Santiago Centro\",\n  \"resumen\": \"Más de 50 feriantes y representantes gremiales se capacitaron en digitalización y medios de pago electrónicos en el Aula Magna de la UTEM.\",\n  \"imagen\": \"https://images.unsplash.com/photo-1542838132-92c53300491e?w=500&auto=format&fit=crop&q=80\",\n  \"link\": \"https://sitios.sercotec.cl/centros-de-negocios/2026/05/20/exitosa-jornada-de-vinculacion/\"\n}"
+      }
+    },
+    {
+      "_id": "r-post-video-item",
+      "colId": "col-sercotec",
+      "containerId": "f-videos",
+      "name": "Agregar un Nuevo Video (POST)",
+      "url": "{{baseUrl}}/api/content/videos",
+      "method": "POST",
+      "headers": [],
+      "params": [],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"titulo\": \"Sercotec Chile: Escuela de Emprendimiento Femenino\",\n  \"descripcion\": \"Videotutorial del programa de capacitación estratégica con herramientas para liderar y consolidar tu negocio.\",\n  \"youtubeId\": \"lIRFlvU3t_Q\",\n  \"categoria\": \"Capacitación\"\n}"
+      }
+    },
+    {
+      "_id": "r-post-video-all",
+      "colId": "col-sercotec",
+      "containerId": "f-videos",
+      "name": "Actualizar Todos los Videos",
+      "url": "{{baseUrl}}/api/content",
+      "method": "POST",
+      "headers": [],
+      "params": [],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"videos\": [\n    {\n      \"id\": \"v-1\",\n      \"titulo\": \"Cómo Postular al Capital Semilla Emprende\",\n      \"descripcion\": \"Guía oficial paso a paso para postular con éxito al fondo concursable y financiar tu nueva idea de negocio.\",\n      \"youtubeId\": \"R5v5tY6yK4w\",\n      \"categoria\": \"Capital Semilla\"\n    },\n    {\n      \"id\": \"v-2\",\n      \"titulo\": \"Capital Abeja Emprende: Liderazgo Femenino\",\n      \"descripcion\": \"Conoce todos los detalles del fondo exclusivo para mujeres emprendedoras que buscan iniciar su empresa formal.\",\n      \"youtubeId\": \"lIRFlvU3t_Q\",\n      \"categoria\": \"Capital Abeja\"\n    }\n  ]\n}"
+      }
+    }
+  ],
+  "settings": {
+    "options": {
+      "baseUrl": "http://localhost:5173"
+    }
+  }
+}

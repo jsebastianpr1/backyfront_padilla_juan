@@ -1,0 +1,765 @@
+openapi: 3.0.0
+info:
+  title: API de Talentos ProviEmplea - Búsqueda Inversa de Empleo
+  version: 1.0.0
+  description: |
+    Esta API REST representa el backend para la plataforma **ProviEmplea**, una vitrina digital de talentos para vecinos de Providencia que buscan trabajo en diferentes sectores, implementando una búsqueda inversa de empleo donde los empleadores buscan a los candidatos.
+
+    ### 🛡️ Políticas de Inclusión y Antidiscriminación (Blind CV)
+    La plataforma implementa un currículum ciego para evitar la discriminación arbitraria:
+    - **Esquema Ciego (`BlindUserResponse`):** Visible para empleadores por defecto. Se filtran todos los datos sociodemográficos sensibles (nombre, correo, edad, género, comuna de residencia). Únicamente expone competencias profesionales (`profession`, `skills`, `certifications`, `references`).
+    - **Esquema Completo (`FullUserResponse`):** Reservado para administradores y el propio postulante. Incluye todos los datos personales e información demográfica para la gestión interna de perfiles.
+
+    ### 📊 Variabilidad de Estructuras y Tipos de Datos
+    Los perfiles que fluyen a través de las operaciones CRUD pueden tener diferentes estructuras de competencias y certificaciones según el sector del candidato. En esta documentación se incluyen ejemplos específicos para tres perfiles de datos distintos:
+    1. **Estructura de Tecnologías / IT:** Enfocado en competencias ágiles, lenguajes de desarrollo de software y nubes públicas.
+    2. **Estructura Clínica / Salud:** Enfocado en titulaciones de salud ocular primaria, refracciones y adaptaciones de lentes progresivos.
+    3. **Estructura Administrativa / Gestión:** Enfocado en la gestión de proyectos, certificaciones PMP y metodologías Scrum.
+    
+    ### ⚡ Optimización del Rendimiento, Paginación y Caché
+    El backend está diseñado bajo estrictas directrices de alta eficiencia computacional y baja latencia:
+
+    1. **Estrategia de Caché-Aside (SQLite Database Store):**
+       - Las consultas repetitivas son devueltas desde la caché local sin tocar las tablas relacionales de SQLite.
+       - **Latencia de Lectura Esperada:**
+         * **Cache Hit (Acierto en Caché):** `< 15ms` (El listado o detalle se entrega directamente de memoria/caché).
+         * **Cache Miss (Fallo en Caché):** `~120ms` - `200ms` (Se ejecuta la consulta en base de datos, se almacena en caché por 3600s, y se retorna).
+       - **Consistencia de Escrituras (Write Invalidation):**
+         * Las operaciones de escritura (`POST`, `PUT`, `DELETE`, `PATCH` toggle status) invalidan toda la caché mediante `Cache::flush()` para garantizar datos en tiempo real al instante. Su latencia esperada es de `~180ms` - `300ms` debido a la escritura en disco de SQLite y flush de registros.
+
+    2. **Paginación del Listado (Memory Optimization):**
+       - Para evitar consumos excesivos de memoria ante miles de registros, `GET /api/usuarios` implementa paginación mediante los parámetros `page` y `per_page`.
+       - Esto reduce el payload JSON de salida y optimiza el consumo de RAM en servidor y cliente.
+
+    3. **Limitación de Tasa (Rate Limiting):**
+       - Las rutas están protegidas mediante el middleware `throttle:60,1` (máximo 60 peticiones por minuto).
+       - Exceder el límite bloquea al cliente con un error `429 Too Many Requests`.
+
+    4. **Consejos de Optimización para Clientes Integradores:**
+       - **Almacenar en Caché Local (Client Caching):** Los clientes Frontend deben almacenar localmente las respuestas utilizando un TTL corto (ej. 2 a 5 minutos) si los datos no cambian frecuentemente para no saturar el servidor.
+       - **Filtrado del Lado del Servidor:** Utilice los parámetros `skill` y `certification` para obtener únicamente los datos relevantes, evitando transferencias masivas de datos.
+       - **Respetar los Límites de Tasa:** El frontend debe leer las cabeceras HTTP `X-RateLimit-Remaining` y pausar las solicitudes automatizadas antes de agotar el límite, para prevenir bloqueos por código `429`.
+
+  contact:
+    name: Soporte Técnico ProviEmplea - Municipalidad de Providencia
+    email: contacto@proviemplea.cl
+servers:
+  - url: http://localhost:8000/api
+    description: Servidor de Desarrollo Local (php artisan serve)
+paths:
+  /usuarios:
+    get:
+      summary: Consultar Vitrina de Talentos
+      description: Recupera el listado de candidatos. Por defecto retorna perfiles ciegos (Blind CV) a los empleadores para evitar discriminaciones.
+      operationId: listCandidates
+      parameters:
+        - name: skill
+          in: query
+          description: Filtrar candidatos que posean una competencia técnica específica.
+          required: false
+          schema:
+            type: string
+            example: Laravel Framework
+        - name: certification
+          in: query
+          description: Filtrar candidatos que posean una certificación específica.
+          required: false
+          schema:
+            type: string
+            example: Google UX Design Professional
+        - name: role
+          in: query
+          description: |
+            Rol de quien consulta.
+            - `employer`: (Default) Retorna la versión "Blind CV" (anónima). Filtra candidatos inactivos.
+            - `admin`: Retorna la versión completa con datos demográficos.
+          required: false
+          schema:
+            type: string
+            enum: [employer, admin]
+            default: employer
+        - name: page
+          in: query
+          description: Número de página a consultar para la paginación.
+          required: false
+          schema:
+            type: integer
+            default: 1
+            example: 1
+        - name: per_page
+          in: query
+          description: Cantidad de perfiles de candidatos a incluir por página (Máximo 100).
+          required: false
+          schema:
+            type: integer
+            default: 10
+            example: 10
+      responses:
+        '200':
+          description: Listado obtenido exitosamente. Retorna un listado estructurado según el rol consultado.
+          headers:
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+              description: Máximo de peticiones permitidas por minuto.
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+              description: Consultas restantes en la ventana de tiempo.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  count:
+                    type: integer
+                    example: 3
+                  data:
+                    type: array
+                    items:
+                      oneOf:
+                        - $ref: '#/components/schemas/BlindUserResponse'
+                        - $ref: '#/components/schemas/FullUserResponse'
+              examples:
+                ListadoCiegoEmpleador:
+                  summary: Listado Ciego (Vista de Empleador)
+                  value:
+                    status: success
+                    count: 2
+                    data:
+                      - $ref: '#/components/examples/DevBlindResponse'
+                      - $ref: '#/components/examples/ClinicalBlindResponse'
+                ListadoCompletoAdmin:
+                  summary: Listado Completo (Vista de Administrador)
+                  value:
+                    status: success
+                    count: 2
+                    data:
+                      - $ref: '#/components/examples/DevFullResponse'
+                      - $ref: '#/components/examples/ClinicalFullResponse'
+        '429':
+          $ref: '#/components/responses/429Error'
+        '500':
+          $ref: '#/components/responses/500Error'
+
+    post:
+      summary: Registrar nuevo candidato
+      description: Permite registrar la ficha completa del candidato postulante (demográficos + profesionales).
+      operationId: createCandidate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+            examples:
+              RegistroDevIT:
+                summary: Registro de Candidato de Tecnología (IT)
+                $ref: '#/components/examples/DevRegisterRequest'
+              RegistroClinicoSalud:
+                summary: Registro de Candidata del Área Salud
+                $ref: '#/components/examples/ClinicalRegisterRequest'
+              RegistroManagerGestion:
+                summary: Registro de Candidato de Gestión y Proyectos
+                $ref: '#/components/examples/ManagerRegisterRequest'
+      responses:
+        '201':
+          description: Ficha de postulación creada con éxito.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  message:
+                    type: string
+                    example: Perfil de candidato creado exitosamente.
+                  data:
+                    $ref: '#/components/schemas/FullUserResponse'
+              examples:
+                RespuestaRegistroDev:
+                  summary: Confirmación de Registro (IT)
+                  value:
+                    status: success
+                    message: Perfil de candidato creado exitosamente.
+                    data:
+                      $ref: '#/components/examples/DevFullResponse'
+        '400':
+          $ref: '#/components/responses/400Error'
+        '429':
+          $ref: '#/components/responses/429Error'
+        '500':
+          $ref: '#/components/responses/500Error'
+
+  /usuarios/{id}:
+    get:
+      summary: Obtener detalle del perfil
+      description: Devuelve el perfil del candidato por su ID. La respuesta varía según el rol asignado en la query.
+      operationId: getCandidateById
+      parameters:
+        - name: id
+          in: path
+          description: ID único del candidato.
+          required: true
+          schema:
+            type: integer
+            example: 1
+        - name: role
+          in: query
+          description: |
+            Rol del solicitante.
+            - `employer`: Retorna currículum ciego. Lanza error 404 si el postulante está inactivo ("apagado").
+            - `admin`: Retorna datos completos.
+          required: false
+          schema:
+            type: string
+            enum: [employer, admin]
+            default: employer
+      responses:
+        '200':
+          description: Candidato localizado.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    oneOf:
+                      - $ref: '#/components/schemas/BlindUserResponse'
+                      - $ref: '#/components/schemas/FullUserResponse'
+              examples:
+                FichaCiegaEmpleador:
+                  summary: Ficha Anonimizada (Vista Empleador)
+                  value:
+                    status: success
+                    data:
+                      $ref: '#/components/examples/DevBlindResponse'
+                FichaCompletaAdmin:
+                  summary: Ficha Completa (Vista Administrador / Candidato)
+                  value:
+                    status: success
+                    data:
+                      $ref: '#/components/examples/DevFullResponse'
+        '404':
+          $ref: '#/components/responses/404Error'
+        '429':
+          $ref: '#/components/responses/429Error'
+        '500':
+          $ref: '#/components/responses/500Error'
+
+    put:
+      summary: Actualizar ficha de candidato
+      description: Modifica los atributos de un candidato registrado. Revalida las restricciones de correo.
+      operationId: updateCandidate
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+            examples:
+              ActualizacionDev:
+                summary: Actualización de Perfil de Tecnología (IT)
+                $ref: '#/components/examples/DevRegisterRequest'
+      responses:
+        '200':
+          description: Perfil actualizado correctamente.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  message:
+                    type: string
+                    example: Perfil de candidato actualizado exitosamente.
+                  data:
+                    $ref: '#/components/schemas/FullUserResponse'
+        '400':
+          $ref: '#/components/responses/400Error'
+        '404':
+          $ref: '#/components/responses/404Error'
+        '429':
+          $ref: '#/components/responses/429Error'
+        '500':
+          $ref: '#/components/responses/500Error'
+
+    delete:
+      summary: Eliminar candidato
+      description: Remueve físicamente el registro del postulante e invalida el caché.
+      operationId: deleteCandidate
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            example: 1
+      responses:
+        '200':
+          description: Postulación eliminada del sistema.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  message:
+                    type: string
+                    example: Perfil de candidato eliminado del sistema.
+        '404':
+          $ref: '#/components/responses/404Error'
+        '429':
+          $ref: '#/components/responses/429Error'
+        '500':
+          $ref: '#/components/responses/500Error'
+
+  /usuarios/{id}/status:
+    patch:
+      summary: Encender o Apagar Perfil ("Toggle Status")
+      description: Modifica el estado lógico de visibilidad del candidato. Los perfiles inactivos son invisibles en la vitrina de empleadores.
+      operationId: toggleCandidateStatus
+      parameters:
+        - name: id
+          in: path
+          description: ID del candidato a modificar.
+          required: true
+          schema:
+            type: integer
+            example: 4
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - is_active
+              properties:
+                is_active:
+                  type: boolean
+                  description: true para activar ("encender") el perfil en la vitrina, false para ocultar ("apagar") el perfil.
+                  example: false
+      responses:
+        '200':
+          description: Visibilidad del perfil modificada con éxito.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  message:
+                    type: string
+                    example: El perfil de candidato ha sido apagado (inactivo) exitosamente.
+                  is_active:
+                    type: boolean
+                    example: false
+        '400':
+          $ref: '#/components/responses/400Error'
+        '404':
+          $ref: '#/components/responses/404Error'
+        '429':
+          $ref: '#/components/responses/429Error'
+        '500':
+          $ref: '#/components/responses/500Error'
+
+components:
+  schemas:
+    UserRequest:
+      type: object
+      required:
+        - name
+        - email
+        - profession
+      properties:
+        name:
+          type: string
+          description: Nombre completo del postulante (Dato sensible demográfico).
+          example: Juan Padilla Roa
+        email:
+          type: string
+          format: email
+          description: Dirección de correo (Dato sensible demográfico).
+          example: juan.padilla@dev.cl
+        age:
+          type: integer
+          description: Edad del candidato (Dato sensible demográfico).
+          example: 27
+        gender:
+          type: string
+          description: Identidad de género del candidato (Dato sensible demográfico).
+          enum: [Masculino, Femenino, Otro, Prefiero no decirlo]
+          example: Masculino
+        comuna:
+          type: string
+          description: Comuna de residencia (Dato sensible demográfico).
+          example: Providencia
+        profession:
+          type: string
+          description: Cargo, oficio o profesión del candidato. (Público).
+          example: Desarrollador Backend Laravel
+        skills:
+          type: array
+          description: Colección de competencias técnicas y blandas del candidato. (Público).
+          items:
+            type: string
+          example: [PHP, Laravel Framework, APIs RESTful, Git/GitHub]
+        certifications:
+          type: array
+          description: Certificaciones y títulos relevantes. (Público).
+          items:
+            type: string
+          example: [Laravel Certified Developer v11, AWS Certified Cloud Practitioner]
+        references:
+          type: array
+          description: Listado de referencias laborales y de contacto directo. (Público).
+          items:
+            $ref: '#/components/schemas/UserReference'
+        is_active:
+          type: boolean
+          description: Define la visibilidad inicial del perfil.
+          example: true
+
+    UserReference:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: Nombre del profesional de referencia.
+          example: Ana María Troncoso
+        relation:
+          type: string
+          description: Relación o cargo laboral de la referencia.
+          example: Líder Técnica
+        phone:
+          type: string
+          description: Teléfono de contacto de la referencia.
+          example: "+56 9 9876 5432"
+        email:
+          type: string
+          format: email
+          description: Correo de la referencia.
+          example: ana.troncoso@techcorp.cl
+
+    BlindUserResponse:
+      type: object
+      description: Representación del Perfil Completo del Postulante (Exhibits all sociodemographic info)
+      properties:
+        id:
+          type: integer
+          example: 2
+        name:
+          type: string
+          example: Juan Padilla Roa
+        email:
+          type: string
+          format: email
+          example: juan.padilla@dev.cl
+        age:
+          type: integer
+          example: 27
+        gender:
+          type: string
+          example: Masculino
+        comuna:
+          type: string
+          example: Providencia
+        profession:
+          type: string
+          example: Desarrollador Backend Laravel
+        skills:
+          type: array
+          items:
+            type: string
+          example: [PHP, Laravel Framework, APIs RESTful, Git/GitHub]
+        certifications:
+          type: array
+          items:
+            type: string
+          example: [Laravel Certified Developer v11, AWS Certified Cloud Practitioner]
+        references:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserReference'
+        created_at:
+          type: string
+          format: date-time
+          example: 2026-05-30T12:00:00.000000Z
+        updated_at:
+          type: string
+          format: date-time
+          example: 2026-05-30T12:00:00.000000Z
+
+    FullUserResponse:
+      type: object
+      description: Representación del Currículum Completo (For Admins and Owners)
+      properties:
+        id:
+          type: integer
+          example: 2
+        name:
+          type: string
+          example: Juan Padilla Roa
+        email:
+          type: string
+          format: email
+          example: juan.padilla@dev.cl
+        age:
+          type: integer
+          example: 27
+        gender:
+          type: string
+          example: Masculino
+        comuna:
+          type: string
+          example: Providencia
+        profession:
+          type: string
+          example: Desarrollador Backend Laravel
+        skills:
+          type: array
+          items:
+            type: string
+        certifications:
+          type: array
+          items:
+            type: string
+        references:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserReference'
+        is_active:
+          type: boolean
+          example: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+  responses:
+    400Error:
+      description: Error en datos suministrados o violaciones en reglas de validación en español.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: error
+              message:
+                type: string
+                example: Error de validación de datos.
+              errors:
+                type: object
+                additionalProperties:
+                  type: array
+                  items:
+                    type: string
+                example:
+                  email:
+                    - El correo electrónico ingresado ya ha sido registrado por otro postulante.
+                  profession:
+                    - El campo profesión / cargo es obligatorio.
+
+    404Error:
+      description: Candidato no registrado o perfil desactivado ("apagado") para la vitrina del empleador.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: error
+              message:
+                type: string
+                example: Candidato no encontrado o perfil inactivo.
+
+    429Error:
+      description: Se han excedido el número de peticiones permitidas (60/minuto).
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+          description: Segundos de espera requeridos para reanudar operaciones.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: Too Many Attempts.
+
+    500Error:
+      description: Excepción de tiempo de ejecución del servidor o fallo de la base de datos SQLite.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: error
+              message:
+                type: string
+                example: Error interno del servidor.
+              error:
+                type: string
+                example: "SQLSTATE[HY000]: General error..."
+
+  examples:
+    # -------------------------------------------------------------
+    # EJEMPLOS DE REGISTRO / ENTRADA (UserRequest)
+    # -------------------------------------------------------------
+    DevRegisterRequest:
+      value:
+        name: Juan Padilla Roa
+        email: juan.padilla@dev.cl
+        age: 27
+        gender: Masculino
+        comuna: Providencia
+        profession: Desarrollador Backend Laravel
+        skills: [PHP, Laravel Framework, APIs RESTful, Git/GitHub, Test-Driven Development (TDD)]
+        certifications: [Laravel Certified Developer v11, AWS Certified Cloud Practitioner]
+        references:
+          - name: Ana María Troncoso
+            relation: Líder Técnica
+            phone: "+56 9 9876 5432"
+            email: ana.troncoso@techcorp.cl
+        is_active: true
+
+    ClinicalRegisterRequest:
+      value:
+        name: Alejandra Parraguez
+        email: alejandra.parraguez@optica.cl
+        age: 34
+        gender: Femenino
+        comuna: Providencia
+        profession: Optometrista Clínico
+        skills: [Refracción Avanzada, Adaptación de Lentes de Contacto, Diagnóstico Primario]
+        certifications: [Título Profesional de Optometría - USTChile, Especialista en Lentes de Contacto Progresivos]
+        references:
+          - name: Dr. Carlos Mendoza
+            relation: Oftalmólogo Jefe
+            phone: "+56 9 8765 4321"
+            email: carlos.mendoza@clinicavisual.cl
+        is_active: true
+
+    ManagerRegisterRequest:
+      value:
+        name: Elena Rojas Peña
+        email: elena.rojas@agency.cl
+        age: 25
+        gender: Femenino
+        comuna: Providencia
+        profession: Diseñadora UI/UX
+        skills: [Figma, Design Systems, Prototipado Interactivo, User Research]
+        certifications: [Google UX Design Professional, Figma Design Advanced Certificate]
+        references:
+          - name: Mauricio Valenzuela
+            relation: CTO
+            phone: "+56 9 5555 4444"
+            email: mvalenzuela@agency.cl
+        is_active: true
+
+    # -------------------------------------------------------------
+    # EJEMPLOS DE RESPUESTA CIEGA (BlindUserResponse)
+    # -------------------------------------------------------------
+    DevBlindResponse:
+      value:
+        id: 2
+        profession: Desarrollador Backend Laravel
+        skills: [PHP, Laravel Framework, APIs RESTful, Git/GitHub, Test-Driven Development (TDD)]
+        certifications: [Laravel Certified Developer v11, AWS Certified Cloud Practitioner]
+        references:
+          - name: Ana María Troncoso
+            relation: Líder Técnica
+            phone: "+56 9 9876 5432"
+            email: ana.troncoso@techcorp.cl
+        created_at: 2026-05-30T12:00:00.000000Z
+        updated_at: 2026-05-30T12:00:00.000000Z
+
+    ClinicalBlindResponse:
+      value:
+        id: 1
+        profession: Optometrista Clínico
+        skills: [Refracción Avanzada, Adaptación de Lentes de Contacto, Diagnóstico Primario]
+        certifications: [Título Profesional de Optometría - USTChile, Especialista en Lentes de Contacto Progresivos]
+        references:
+          - name: Dr. Carlos Mendoza
+            relation: Oftalmólogo Jefe
+            phone: "+56 9 8765 4321"
+            email: carlos.mendoza@clinicavisual.cl
+        created_at: 2026-05-30T12:00:00.000000Z
+        updated_at: 2026-05-30T12:00:00.000000Z
+
+    # -------------------------------------------------------------
+    # EJEMPLOS DE RESPUESTA COMPLETA (FullUserResponse)
+    # -------------------------------------------------------------
+    DevFullResponse:
+      value:
+        id: 2
+        name: Juan Padilla Roa
+        email: juan.padilla@dev.cl
+        age: 27
+        gender: Masculino
+        comuna: Providencia
+        profession: Desarrollador Backend Laravel
+        skills: [PHP, Laravel Framework, APIs RESTful, Git/GitHub, Test-Driven Development (TDD)]
+        certifications: [Laravel Certified Developer v11, AWS Certified Cloud Practitioner]
+        references:
+          - name: Ana María Troncoso
+            relation: Líder Técnica
+            phone: "+56 9 9876 5432"
+            email: ana.troncoso@techcorp.cl
+        is_active: true
+        created_at: 2026-05-30T12:00:00.000000Z
+        updated_at: 2026-05-30T12:00:00.000000Z
+
+    ClinicalFullResponse:
+      value:
+        id: 1
+        name: Alejandra Parraguez
+        email: alejandra.parraguez@optica.cl
+        age: 34
+        gender: Femenino
+        comuna: Providencia
+        profession: Optometrista Clínico
+        skills: [Refracción Avanzada, Adaptación de Lentes de Contacto, Diagnóstico Primario]
+        certifications: [Título Profesional de Optometría - USTChile, Especialista en Lentes de Contacto Progresivos]
+        references:
+          - name: Dr. Carlos Mendoza
+            relation: Oftalmólogo Jefe
+            phone: "+56 9 8765 4321"
+            email: carlos.mendoza@clinicavisual.cl
+        is_active: true
+        created_at: 2026-05-30T12:00:00.000000Z
+        updated_at: 2026-05-30T12:00:00.000000Z

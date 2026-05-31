@@ -1,0 +1,11 @@
+# Ignore large video files
+*.mp4
+*.avi
+*.mkv
+*.mov
+
+# Ignore Microsoft Office temporary files
+~$*
+
+# Ignore PHP executable archives
+*.phar
